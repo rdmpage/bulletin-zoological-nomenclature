@@ -52,8 +52,21 @@ $std_keys[] = 'year';
 
 array_unshift($std_keys, 'id');
 
-echo join("\t", $std_keys) . "\n";
+if (0)
+{
 
+echo "CREATE TABLE articles\n";
+foreach ($std_keys as $k => $v)
+{
+	echo ",`$v` TEXT NULL\n";
+
+}
+echo ");\n";
+
+exit();
+}
+
+//echo join("\t", $std_keys) . "\n";
 
 $headings = array();
 
@@ -100,8 +113,12 @@ while (!feof($file_handle))
 					case 'StartPageID':
 						$std_obj->{$sheet_key_map[$k]} = $v;
 						$std_obj->{$sheet_key_map[$k]} = preg_replace('/https?:\/\/(www.)?biodiversitylibrary.org\/page\//', '', $std_obj->{$sheet_key_map[$k]});
-						break;
-				
+						break;				
+
+					case 'Authors':
+						$std_obj->{$sheet_key_map[$k]} = $v;
+						$std_obj->{$sheet_key_map[$k]} = preg_replace('/;\s+/', ';', $std_obj->{$sheet_key_map[$k]});
+						break;				
 						
 					case 'Date':
 						$std_obj->year = substr($v, 0, 4);
@@ -121,6 +138,7 @@ while (!feof($file_handle))
 			
 			//print_r($std_obj);
 			
+			/*
 			$output = array();	
 			
 			foreach ($std_keys as $k)
@@ -135,6 +153,37 @@ while (!feof($file_handle))
 				}
 			}
 			echo join("\t", $output) . "\n";
+			*/
+			
+			$keys = array();
+			$values = array();
+
+			foreach ($std_obj as $k => $v)
+			{
+				$keys[] = '"' . $k . '"'; // must be double quotes
+
+				if (is_array($v))
+				{
+					$values[] = "'" . str_replace("'", "''", json_encode(array_values($v))) . "'";
+				}
+				elseif(is_object($v))
+				{
+					$values[] = "'" . str_replace("'", "''", json_encode($v)) . "'";
+				}
+				elseif (preg_match('/^POINT/', $v))
+				{
+					$values[] = "ST_GeomFromText('" . $v . "', 4326)";
+				}
+				else
+				{				
+					$values[] = "'" . str_replace("'", "''", $v) . "'";
+				}					
+			}
+
+			$sql = 'REPLACE INTO articles (' . join(",", $keys) . ') VALUES (' . join(",", $values) . ');';					
+			$sql .= "\n";		
+			
+			echo $sql;	
 			
 			
 		}
